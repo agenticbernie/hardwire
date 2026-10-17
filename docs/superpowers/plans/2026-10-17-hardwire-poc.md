@@ -92,6 +92,6 @@ No agent edits another task's files. T01 defines contracts before implementation
 
 ## Current execution record
 
-The workspace contains no Git repository/remote, so no commit, push, GitHub Actions dispatch, or live account deployment is claimed. A GitHub `GITHUB_PAT` variable was detected by presence only; its value and permissions were not read. `WOKWI_CLI_TOKEN` is absent. Cloudflare and Botkeep resources were not provisioned.
+The implementation has since been published to [agenticbernie/hardwire](https://github.com/agenticbernie/hardwire), branch `main`, commit `3f783b7`. No GitHub Actions dispatch or live account deployment has occurred. A local `GITHUB_PAT` variable was detected by presence only; its value and permissions were not read. `WOKWI_CLI_TOKEN` was absent from the local feasibility environment; GitHub secret configuration is unverified. Cloudflare and Botkeep resources were not provisioned.
 
 Final local component evidence: contracts 5/5, API 25/25, Worker 18/18, runner 17/17, and UI 6/6 (71/71 total). Root `npm run typecheck` and `npm run build` passed; API tests passed again after the generated UI build, including same-origin SPA/assets and protected API routing. The isolated runner Docker image and actual pinned PlatformIO baseline build also passed. These checks do not claim Wokwi or deployed-service acceptance.

@@ -43,11 +43,11 @@ Sources: [GPT-6 Luna model](https://developers.openai.com/api/docs/models/gpt-6-
 **Documented architecture: feasible. Live account permissions and deploy: unverified.**
 
 - Local Node.js is 24.21.0 and npm is 11.19.0. GitHub CLI, Wrangler, PlatformIO, and Wokwi CLI were not installed globally; PlatformIO and Wokwi were installed only in disposable `/tmp` locations for FZ-01.
-- A `GITHUB_PAT` variable is present, but its value, identity, permissions, and target-repository access were not inspected. The workspace has no GitHub repository or workflow to dispatch.
+- A `GITHUB_PAT` variable was present, but its value, identity, permissions, and target-repository access were not inspected. During this initial probe, no destination repository had been provided and no Hardwire workflow was available to dispatch.
 - Wrangler is absent. A local Wrangler OAuth config exists and contains token-related keys, but values, expiry, identity, and permissions were not inspected. No Cloudflare resource was deployed.
 - Assuming Botkeep means `botkeep.cloud`, its docs cover Node.js apps and GitHub/ZIP imports. No public programmatic provisioning contract was found, so deployment must use the dashboard or documented import workflow.
 - Cloudflare Workers support native D1 and R2 bindings. GitHub documents workflow dispatch and run cancellation; a live dispatch needs a Hardwire repository, workflow, and appropriate Actions write permission.
-- No Botkeep, Cloudflare, or GitHub write action was performed.
+- No Botkeep, Cloudflare, or GitHub write action was performed during the initial probe. The user later provided [agenticbernie/hardwire](https://github.com/agenticbernie/hardwire); the implementation and dispatch-only workflow were published to `main` at commit `3f783b7`. No workflow dispatch or cloud deployment has occurred.
 
 **Decision:** Cloudflare Worker owns D1/R2 data access. The Botkeep Node process serves founder-facing API and dispatches Actions using a configured GitHub REST integration. Keep Botkeep provisioning manual until its account-specific flow is verified. Use a GitHub OIDC exchange for short-lived runner access rather than putting a permanent Cloudflare credential in the product workspace.
 
@@ -57,8 +57,8 @@ Sources: [Botkeep docs](https://botkeep.cloud/docs), [Cloudflare D1 Worker API](
 
 | Item | State | Needed to prove |
 |---|---|---|
-| `WOKWI_CLI_TOKEN` | Absent | Authenticated scenarios, Serial output, TFT screenshots, simulator quota and duration |
-| Hardwire GitHub repository and workflow | Absent | Live Actions dispatch/cancel and three independent cloud runs |
+| `WOKWI_CLI_TOKEN` | Absent in the local feasibility environment; repository secret state unverified | Authenticated scenarios, Serial output, TFT screenshots, simulator quota and duration |
+| Hardwire GitHub repository and workflow | Published on `main` at `3f783b7`; OIDC trust, secrets, and dispatch unverified | Live Actions dispatch/cancel and three independent cloud runs |
 | Botkeep account/runtime assignment | Unverified | Deployment, host, port/domain and process supervision |
 | Cloudflare deploy identity and D1/R2 resources | Unverified | Live Worker deploy, data persistence and deletion behavior |
 | 72-hour elapsed retention run | Not started | Actual 72-hour operational deletion evidence |

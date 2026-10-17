@@ -33,4 +33,4 @@ Never print or store secret values. Product source, OpenAI credentials, GitHub c
 
 ## Current structure
 
-The workspace now contains `packages/contracts`, `apps/api`, `apps/data-worker`, `apps/runner`, `apps/web`, the D1 migration, and one GitHub Actions workflow. The root README documents local checks, configuration, and deployment sequence. The workspace still has no Git history or remote. Local tests do not establish deployed cloud integrations; use `docs/hardwire/traceability.md` and `feasibility.md` for current evidence status.
+The workspace now contains `packages/contracts`, `apps/api`, `apps/data-worker`, `apps/runner`, `apps/web`, the D1 migration, and one GitHub Actions workflow. The implementation is published in `agenticbernie/hardwire` on `main` at commit `3f783b7`. The original local workspace still has no Git metadata. Local tests do not establish deployed cloud integrations; use `docs/hardwire/traceability.md` and `feasibility.md` for current evidence status.
