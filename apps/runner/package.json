@@ -1,0 +1,12 @@
+{
+  "name": "@hardwire/runner",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "npm run typecheck"
+  }
+}

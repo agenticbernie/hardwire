@@ -1,0 +1,72 @@
+# UNVALIDATED: no authenticated Wokwi run has executed this scenario.
+# This scenario is trusted runner input, never editable by the product agent.
+name: Hardwire Gunny 30-second turns and buttons
+version: 1
+author: Hardwire
+steps:
+  - wait-serial: 'Build Things #1 - Gunny:'
+  - take-screenshot:
+      part-id: tft
+      save-to: /workspace/captures/boot.png
+  - set-control:
+      part-id: btnAngleUp
+      control: pressed
+      value: 1
+  - wait-serial: 'P1 ANG=46 POW=50 DMG~26'
+  - set-control:
+      part-id: btnAngleUp
+      control: pressed
+      value: 0
+  - delay: 100ms
+  - set-control:
+      part-id: btnAngleDown
+      control: pressed
+      value: 1
+  - wait-serial: 'P1 ANG=45 POW=50 DMG~26'
+  - set-control:
+      part-id: btnAngleDown
+      control: pressed
+      value: 0
+  - delay: 100ms
+  - set-control:
+      part-id: btnPowerUp
+      control: pressed
+      value: 1
+  - wait-serial: 'P1 ANG=45 POW=51 DMG~26'
+  - set-control:
+      part-id: btnPowerUp
+      control: pressed
+      value: 0
+  - delay: 100ms
+  - set-control:
+      part-id: btnPowerDown
+      control: pressed
+      value: 1
+  - wait-serial: 'P1 ANG=45 POW=50 DMG~26'
+  - set-control:
+      part-id: btnPowerDown
+      control: pressed
+      value: 0
+  - delay: 100ms
+  - set-control:
+      part-id: btnFire
+      control: pressed
+      value: 1
+  - wait-serial: 'FIRE P1 angle=45 power=50 dmg=26'
+  - set-control:
+      part-id: btnFire
+      control: pressed
+      value: 0
+  - wait-serial: 'TURN P2 30s'
+  - take-screenshot:
+      part-id: tft
+      save-to: /workspace/captures/turn.png
+  - delay: 29s
+  - take-screenshot:
+      part-id: tft
+      save-to: /workspace/captures/warning.png
+  - wait-serial: 'TIME UP'
+  - wait-serial: 'TURN P1 30s'
+  - take-screenshot:
+      part-id: tft
+      save-to: /workspace/captures/timeout.png

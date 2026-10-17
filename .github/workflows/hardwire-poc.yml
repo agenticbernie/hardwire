@@ -1,0 +1,41 @@
+name: Hardwire PoC
+run-name: Hardwire ${{ inputs.run_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Immutable approved Hardwire run ID
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: hardwire-poc-founder
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.21.0'
+      - name: Install trusted runner dependencies
+        run: npm ci --ignore-scripts
+      - name: Build isolated pinned tools image
+        run: docker build --tag hardwire-tools:local --file apps/runner/Dockerfile apps/runner
+      - name: Execute approved sequential run
+        env:
+          HARDWIRE_RUN_ID: ${{ inputs.run_id }}
+          DATA_WORKER_URL: ${{ vars.DATA_WORKER_URL }}
+          HARDWIRE_OIDC_AUDIENCE: ${{ vars.HARDWIRE_OIDC_AUDIENCE }}
+          HARDWIRE_RUNNER_IMAGE: hardwire-tools:local
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
+        run: node --experimental-strip-types apps/runner/src/index.ts
+      # Evidence and checkpoints go directly to the authorization-checked Worker/R2.
+      # Never use upload-artifact or a product workspace/tool-auth cache here.

@@ -1,0 +1,21 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hardwire-data",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-17",
+  "workers_dev": true,
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "hardwire",
+    "database_id": "REPLACE_WITH_PROVISIONED_D1_ID",
+    "migrations_dir": "../../db/migrations"
+  }],
+  "r2_buckets": [{ "binding": "ARTIFACTS", "bucket_name": "hardwire-private" }],
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "vars": {
+    "GITHUB_REPOSITORY": "REPLACE_OWNER/REPLACE_REPOSITORY",
+    "GITHUB_WORKFLOW_REF": "REPLACE_OWNER/REPLACE_REPOSITORY/.github/workflows/hardwire-poc.yml@refs/heads/main",
+    "OIDC_AUDIENCE": "hardwire-data",
+    "RETENTION_SECONDS": "259200"
+  }
+}
