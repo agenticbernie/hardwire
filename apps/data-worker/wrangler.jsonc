@@ -13,8 +13,8 @@
   "r2_buckets": [{ "binding": "ARTIFACTS", "bucket_name": "hardwire-private" }],
   "triggers": { "crons": ["*/15 * * * *"] },
   "vars": {
-    "GITHUB_REPOSITORY": "REPLACE_OWNER/REPLACE_REPOSITORY",
-    "GITHUB_WORKFLOW_REF": "REPLACE_OWNER/REPLACE_REPOSITORY/.github/workflows/hardwire-poc.yml@refs/heads/main",
+    "GITHUB_REPOSITORY": "agenticbernie/hardwire",
+    "GITHUB_WORKFLOW_REF": "agenticbernie/hardwire/.github/workflows/hardwire-poc.yml@refs/heads/main",
     "OIDC_AUDIENCE": "hardwire-data",
     "RETENTION_SECONDS": "259200"
   }
