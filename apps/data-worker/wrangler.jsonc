@@ -7,7 +7,7 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "hardwire",
-    "database_id": "REPLACE_WITH_PROVISIONED_D1_ID",
+    "database_id": "08adc5cc-150e-4365-a9d9-239d52cdcf00",
     "migrations_dir": "../../db/migrations"
   }],
   "r2_buckets": [{ "binding": "ARTIFACTS", "bucket_name": "hardwire-private" }],

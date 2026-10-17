@@ -2,7 +2,7 @@
 
 This Worker is the private data boundary for the founder API and GitHub Actions runner. It owns D1 metadata and private R2 objects. It does not dispatch GitHub workflows or run imported code.
 
-## Local checks
+## Local checks and live deployment
 
 From the repository root, after installing the root workspace dependencies:
 
@@ -17,9 +17,9 @@ The tests use Node's in-memory SQLite database behind a small D1 interface fixtu
 
 Set `DATA_API_TOKEN` as a Worker secret; the founder API must use the same value. Service calls require `Authorization: Bearer <DATA_API_TOKEN>` and `X-Founder-Id: founder`. The founder ID is fixed for this PoC. Keep the token outside the product workspace and logs.
 
-Configure `GITHUB_REPOSITORY`, the exact `GITHUB_WORKFLOW_REF`, and `OIDC_AUDIENCE`. `wrangler.jsonc` deliberately contains deployment placeholders. Assign an existing D1 database and private R2 bucket, apply `db/migrations/0001_hardwire.sql`, and confirm an HTTPS Worker hostname reachable by the API and GitHub runner. The Worker endpoint requires service or run-scoped authentication; the R2 bucket is not public. The runtime needs no standalone R2 or D1 credentials because it uses bindings.
+The live Worker is `https://hardwire-data.bernie-web3.workers.dev`. D1 `hardwire` is in APAC with ID `08adc5cc-150e-4365-a9d9-239d52cdcf00`; migration `0001_hardwire.sql` is applied. Private R2 bucket `hardwire-private` is in APAC. `wrangler.jsonc` pins these bindings and trusts `agenticbernie/hardwire` plus the exact `main` workflow ref. The Worker has `*/15 * * * *` cleanup configured. The R2 bucket has not been made public; runtime access uses its private binding.
 
-Production provisioning/deployment still requires an authorized Cloudflare identity. This package does not install Wrangler or provision resources. Review the configured account, route, database ID, bucket, and cron before using deployment tooling. Automatic provisioning is unnecessary for this configuration.
+Set `DATA_API_TOKEN` with `wrangler secret put DATA_API_TOKEN --config apps/data-worker/wrangler.jsonc`, and set the identical value as the Botkeep API secret through its secure configuration UI. This secret is currently unset. Until both locations match, founder service operations are unavailable. Do not use a Worker variable or commit the token to the repository.
 
 ## Runner authority
 
@@ -55,4 +55,4 @@ The default retention interval is 259200 seconds (72 hours). `RETENTION_SECONDS`
 
 Access is denied at expiration independently of cleanup. The 15-minute cron removes expired run prefixes and related rows even when another run keeps the project alive; it also removes expired exports. Project expiration removes the complete private project prefix, including stranded uploads/imports, and shared metadata. Cleanup records stable error codes, retries with bounded exponential backoff, and measured deletion lag without logging object contents or provider exception messages.
 
-The remaining live prerequisites are actual Cloudflare bindings/migrations/cron, a deployed HTTPS Worker hostname, a GitHub repository and workflow with OIDC permission, API service credentials, real OIDC dispatch/resume/cancel runs, provider quota behavior and a separate real 72-hour retention observation.
+The live D1/R2 bindings, migration, HTTPS Worker deployment and cleanup cron are configured. Remaining prerequisites are the shared API service credential, GitHub repository Actions variables/secrets, a real OIDC dispatch/resume/cancel run, provider quota behavior and a separate real 72-hour retention observation.

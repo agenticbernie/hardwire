@@ -40,11 +40,14 @@ Sources: [GPT-6 Luna model](https://developers.openai.com/api/docs/models/gpt-6-
 
 ## FZ-03 — Botkeep, GitHub Actions, Worker, D1, and R2
 
-**Documented architecture: feasible. Live account permissions and deploy: unverified.**
+**Core Cloudflare path: deployed and smoke-checked. GitHub Actions and Botkeep integration: blocked/unverified.**
 
-- Local Node.js is 24.21.0 and npm is 11.19.0. GitHub CLI, Wrangler, PlatformIO, and Wokwi CLI were not installed globally; PlatformIO and Wokwi were installed only in disposable `/tmp` locations for FZ-01.
-- A `GITHUB_PAT` variable was present, but its value, identity, permissions, and target-repository access were not inspected. During this initial probe, no destination repository had been provided and no Hardwire workflow was available to dispatch.
-- Wrangler is absent. A local Wrangler OAuth config exists and contains token-related keys, but values, expiry, identity, and permissions were not inspected. No Cloudflare resource was deployed.
+- Local Node.js is 24.21.0 and npm is 11.19.0. Wrangler 4.151.1 was run from its ephemeral npx installation; GitHub CLI is absent. PlatformIO and Wokwi were installed only in disposable `/tmp` locations for FZ-01.
+- The preconfigured `GITHUB_PAT` returned HTTP 403 for GitHub `/user` and repository Actions APIs with `Sorry. Your account was suspended`. No repository variables or secrets were set and no workflow was dispatched. Its value was not printed.
+- After the user approved Wrangler device login, `whoami` authenticated the Cloudflare account. Created D1 `hardwire` (ID `08adc5cc-150e-4365-a9d9-239d52cdcf00`, APAC) and private-by-default R2 bucket `hardwire-private` (APAC). Applied migration `0001_hardwire.sql`; a remote read confirmed the expected application tables and Wrangler reported no pending migrations.
+- Deployed Worker `hardwire-data` as version `5042c1b2-bec7-4ebe-8af8-fcff7281de82` at `https://hardwire-data.bernie-web3.workers.dev`, with the D1/R2 bindings and `*/15 * * * *` cleanup cron. An unauthenticated HTTPS request returned the expected `401 service_auth_required`, confirming the Worker endpoint is live. This is not an authenticated API or workflow integration test.
+- Worker secret `DATA_API_TOKEN` is not configured because it must also be set as the matching Botkeep API secret through a secure platform configuration. Botkeep deployment/account access is still unverified.
+- `OPENAI_API_KEY` exists in the local environment but was not transferred to GitHub; `WOKWI_CLI_TOKEN` is absent. GitHub Actions secret state remains unverified.
 - Assuming Botkeep means `botkeep.cloud`, its docs cover Node.js apps and GitHub/ZIP imports. No public programmatic provisioning contract was found, so deployment must use the dashboard or documented import workflow.
 - Cloudflare Workers support native D1 and R2 bindings. GitHub documents workflow dispatch and run cancellation; a live dispatch needs a Hardwire repository, workflow, and appropriate Actions write permission.
 - No Botkeep, Cloudflare, or GitHub write action was performed during the initial probe. The user later provided [agenticbernie/hardwire](https://github.com/agenticbernie/hardwire); the implementation and dispatch-only workflow were published to `main` at commit `3f783b7`. No workflow dispatch or cloud deployment has occurred.
@@ -55,20 +58,20 @@ Sources: [Botkeep docs](https://botkeep.cloud/docs), [Cloudflare D1 Worker API](
 
 ## Open prerequisites
 
-## Deployment access recheck
+## Current deployment status
 
-- Wrangler was not installed on `PATH`; an ephemeral Wrangler 4.151.1 invocation through `npx` was used. Its saved OAuth session is expired and cannot be refreshed. No `CLOUDFLARE_API_TOKEN` is present in the execution environment, so `whoami`, D1 listing, and R2 listing could not authenticate. No D1 database or R2 bucket was created and no Worker was deployed.
 - GitHub REST checks using the preconfigured `GITHUB_PAT` returned HTTP 403 with the message `Sorry. Your account was suspended` for both `/user` and the Hardwire repository. The token value was not printed. Repository Actions variables/secrets could not be configured through that token.
 - `OPENAI_API_KEY` is present in the execution environment, but was not written to GitHub. `WOKWI_CLI_TOKEN` is absent. GitHub Actions secret configuration remains unverified.
-- `apps/data-worker/wrangler.jsonc` now trusts `agenticbernie/hardwire` and the exact `main` workflow ref; the D1 database ID remains a provisioning placeholder. This config update is in commit `7fa62d3`.
+- `apps/data-worker/wrangler.jsonc` has the live D1 ID and trusts `agenticbernie/hardwire` plus the exact `main` workflow ref. This deployment/configuration evidence is included in the current repository handoff update.
 
 | Item | State | Needed to prove |
 |---|---|---|
-| Cloudflare authentication | Saved Wrangler OAuth session expired; no API token in the execution environment | Provision D1/R2, set Worker secret, apply migration and deploy |
-| GitHub Actions API credential | REST requests returned 403 suspension message; no repository variables/secrets changed | Set Worker URL/audience variables and runner secrets |
+| Cloudflare resources and deployment | D1/R2 provisioned, migration applied, Worker deployed and unauthenticated endpoint smoke-checked | Configure the shared `DATA_API_TOKEN`; validate authenticated API calls and runner OIDC exchange |
+| GitHub Actions API credential | REST requests returned 403 suspension message; no repository variables/secrets changed or workflow run dispatched | Restore valid GitHub Actions write access; configure Worker URL/audience variables and runner secrets |
 | `WOKWI_CLI_TOKEN` | Absent in the local feasibility environment; repository secret state unverified | Authenticated scenarios, Serial output, TFT screenshots, simulator quota and duration |
-| Hardwire GitHub repository and workflow | Published on `main`; OIDC repo/workflow trust configured in Worker source, but Actions secrets and dispatch unverified | Live Actions dispatch/cancel and three independent cloud runs |
+| Hardwire GitHub repository and workflow | Workflow published on `main`; OIDC trust configured in deployed Worker, but Actions vars/secrets and dispatch unverified | Live Actions dispatch/cancel and three independent cloud runs |
 | Botkeep account/runtime assignment | Unverified | Deployment, host, port/domain and process supervision |
-| Cloudflare deploy identity and D1/R2 resources | Unverified | Live Worker deploy, data persistence and deletion behavior |
+| Worker secret and Botkeep shared credential | Not configured | Same `DATA_API_TOKEN` in Worker secret and Botkeep API secret; authenticated API smoke test |
+| D1/R2 checkpoint persistence | Bindings are live; no project/checkpoint data written | Real authorized upload/download/checksum and cleanup validation |
 | 72-hour elapsed retention run | Not started | Actual 72-hour operational deletion evidence |
 | Visual rubric quality | Not evaluated | Correct detections across real baseline and seeded display failures |
