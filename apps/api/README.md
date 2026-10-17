@@ -1,6 +1,6 @@
 # Founder API and Cloudflare Worker
 
-Fastify API for local Node development and a native Fetch API adapter for Cloudflare Workers. Deploy `src/worker.ts` with `wrangler deploy --config apps/api/wrangler.jsonc`; it serves `apps/web/dist` through Worker Assets and reuses the API service/auth logic without starting a Node HTTP server.
+The shared Hono API runs directly as a Cloudflare Worker and through `@hono/node-server` for local Node development. Both adapters use the same route definitions, founder auth, service layer, response errors, and request limits. Deploy `src/worker.ts` with `wrangler deploy --config apps/api/wrangler.jsonc`; Worker Assets serves `apps/web/dist` from the same origin.
 
 ## Configuration
 
@@ -8,14 +8,15 @@ Fastify API for local Node development and a native Fetch API adapter for Cloudf
 | --- | --- |
 | `PUBLIC_ORIGIN` | Exact browser origin, e.g. `https://hardwire.example`; mutations require this Origin header |
 | `FOUNDER_PASSWORD_HASH` | `scrypt:<32 lowercase hex salt>:<128 lowercase hex derived key>`; no plaintext password is stored |
-| `DATA_WORKER_URL` | Worker HTTPS origin; HTTP is accepted only for localhost development |
+| `DATA_WORKER_URL` | Data Worker HTTPS origin for the local Node adapter; the deployed Worker uses the `DATA_SERVICE` binding |
 | `DATA_API_TOKEN` | At least 32 characters; must match the Worker's server service token |
 | `GITHUB_PAT` | Server-only token with Actions write permission for the configured repository |
 | `GITHUB_OWNER`, `GITHUB_REPO` | Explicit target repository |
 | `GITHUB_WORKFLOW` | Workflow file name; defaults to `hardwire-poc.yml` |
 | `GITHUB_REF` | Explicit deployed workflow ref; defaults to `main` |
-| `HOST`, `PORT` | Node adapter listen address; the Cloudflare Worker adapter supplies its internal HTTP server port |
+| `HOST`, `PORT` | Node adapter listen address |
 | `AUTH_DB` | Worker-only D1 binding to the `hardwire` database; stores hashed founder sessions and rate-limit buckets |
+| `DATA_SERVICE` | Worker-only service binding to the `hardwire-data` Worker for internal API requests |
 
 From the repository root, run `npm run founder:password` in an interactive terminal to provision the Cloudflare `FOUNDER_PASSWORD_HASH`. It reads the password twice with terminal echo disabled, derives the scrypt digest with `passwordHash()`, and pipes only the digest to Wrangler stdin. Avoid putting plaintext passwords or hashes in command arguments, shell history, or chat. The API does not print configuration, upstream response bodies, request cookies, authentication headers, or stack traces.
 
@@ -43,4 +44,4 @@ Run polling reports execution, acceptance, criteria, attempts, usage, authorized
 
 ## Verification and remaining live work
 
-`npm test --workspace @hardwire/api` runs Fastify injection tests with stubbed Worker/GitHub HTTP boundaries, including same-origin SPA fallback and asset serving. `npm run build --workspace @hardwire/api` performs scoped TypeScript checking. `npm run dev:worker --workspace @hardwire/api` runs the Cloudflare adapter locally after Vite assets and secrets are configured. These checks are not evidence of deployed D1/R2, GitHub dispatch/cancel, Wokwi execution, or archive round-trip integration. Live work requires configured deployed services, repository/workflow, credentials and real evidence.
+`npm test --workspace @hardwire/api` exercises the Hono app with stubbed Worker/GitHub HTTP boundaries, including same-origin SPA fallback and asset serving. `npm run build --workspace @hardwire/api` performs scoped TypeScript checking. `npm run dev:worker --workspace @hardwire/api` runs the Cloudflare Worker locally after Vite assets and secrets are configured. These checks are not evidence of deployed D1/R2, GitHub dispatch/cancel, Wokwi execution, or archive round-trip integration. Live work requires configured deployed services, repository/workflow, credentials and real evidence.

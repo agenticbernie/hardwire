@@ -15,7 +15,7 @@ npm run typecheck
 npm run build
 ```
 
-`npm run build` compiles the web UI into `apps/web/dist` and typechecks the API and runner. Cloudflare Worker Assets serves the UI and routes `/api` through the same origin. To run the Node/Fastify adapter locally, configure the founder and Worker environment variables below, then run:
+`npm run build` compiles the web UI into `apps/web/dist` and typechecks the API and runner. Cloudflare Worker Assets serves the UI and routes `/api` through the same origin. The shared Hono app runs directly on Workers and through `@hono/node-server` for local Node development. To run the Node adapter, configure the founder and Worker environment variables below, then run:
 
 ```sh
 npm start --workspace @hardwire/api

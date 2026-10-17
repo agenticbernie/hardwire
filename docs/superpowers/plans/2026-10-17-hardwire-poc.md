@@ -4,9 +4,9 @@
 
 **Goal:** Build and verify the first Hardwire PoC loop for a pinned Gunny Arcade ESP32 project, from approved request through agent changes, firmware build, Wokwi evidence, evaluation, repair, and result reporting.
 
-**Architecture:** A React/Vite founder UI is served as Cloudflare Worker Assets. A Cloudflare Worker hosts the founder API through a native Fetch API adapter; a separate Cloudflare Worker owns product D1/R2 operations and expiration. A single GitHub Actions run executes OpenCode, PlatformIO, Wokwi, evidence evaluation, and bounded repairs sequentially. Shared TypeScript contracts define state and evidence across these services.
+**Architecture:** A React/Vite founder UI is served as Cloudflare Worker Assets. One shared Hono app serves the founder API directly on Cloudflare Workers and through `@hono/node-server` in local Node development; a separate Cloudflare Worker owns product D1/R2 operations and expiration. A single GitHub Actions run executes OpenCode, PlatformIO, Wokwi, evidence evaluation, and bounded repairs sequentially. Shared TypeScript contracts define state and evidence across these services.
 
-**Tech Stack:** Node.js 24, TypeScript, React, Vite, Fastify, Cloudflare Workers/D1/R2, GitHub Actions, OpenCode CLI 1.18.34 (pin after compatibility check), PlatformIO Core 6.2.0 for the baseline, Wokwi CLI 0.28.1, Zod, Vitest.
+**Tech Stack:** Node.js 24, TypeScript, React, Vite, Hono, `@hono/node-server`, Cloudflare Workers/D1/R2, GitHub Actions, OpenCode CLI 1.18.34 (pin after compatibility check), PlatformIO Core 6.2.0 for the baseline, Wokwi CLI 0.28.1, Zod, Vitest.
 
 **Spec:** Hardwire PoC Product & Technical Specification v0.1 supplied in the user request (2026-10-17); detailed mapping is in `docs/hardwire/traceability.md` and measured feasibility is in `docs/hardwire/feasibility.md`.
 

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { hashApprovalMaterial } from "../../../packages/contracts/src/index.ts";
 import { createApp } from "../src/app.ts";
+import type { WorkerBindings } from "../src/app.ts";
 import { passwordHash, SESSION_COOKIE } from "../src/auth.ts";
 import { readConfig } from "../src/config.ts";
 import type { ApiConfig } from "../src/config.ts";
@@ -25,6 +26,37 @@ const taskInput = {
 };
 const taskId = "task-1";
 const taskHash = await hashApprovalMaterial({ taskId, taskVersion: 1, objective: taskInput.objective, allowedPaths: taskInput.allowedPaths, limits: taskInput.limits, criteria: taskInput.criteria.map((criterion) => ({ ...criterion, evidence: [...criterion.evidence] })) });
+
+type InjectInput = { url: string; method?: string; headers?: Record<string, string>; payload?: unknown };
+type InjectResponse = { statusCode: number; headers: Record<string, string>; body: string; json<T = any>(): T };
+type TestApp = ReturnType<typeof createApp> & { inject(input: InjectInput): Promise<InjectResponse>; close(): Promise<void> };
+
+function testApp(app: ReturnType<typeof createApp>): TestApp {
+  return Object.assign(app, {
+    async inject({ url, method = "GET", headers: sourceHeaders = {}, payload }: InjectInput): Promise<InjectResponse> {
+      const headers = new Headers(sourceHeaders);
+      let body: BodyInit | undefined;
+      if (payload !== undefined) {
+        if (typeof payload === "string") body = payload;
+        else if (payload instanceof Uint8Array) body = new Uint8Array(payload) as BodyInit;
+        else {
+          body = JSON.stringify(payload);
+          if (!headers.has("content-type")) headers.set("content-type", "application/json");
+        }
+      }
+      const request = new Request(new URL(url, origin), { method, headers, body });
+      const response = await app.fetch(request, {} as WorkerBindings);
+      const responseBody = await response.text();
+      return {
+        statusCode: response.status,
+        headers: (() => { const result: Record<string, string> = {}; response.headers.forEach((value, key) => { result[key] = value; }); return result; })(),
+        body: responseBody,
+        json<T = JsonRecord>(): T { return JSON.parse(responseBody) as T; },
+      };
+    },
+    async close(): Promise<void> {},
+  });
+}
 
 function json(body: unknown, status = 200): Response { return Response.json(body, { status }); }
 
@@ -116,7 +148,7 @@ function boundary(options: { dispatch?: "ok" | "missing" | "timeout" | "failed";
 }
 
 async function authenticated(fetcher: Fetcher, now?: () => number) {
-  const app = await createApp(config, { fetcher, now });
+  const app = testApp(createApp(config, { fetcher, now }));
   const login = await app.inject({ method: "POST", url: "/api/auth/login", headers: { origin }, payload: { password: "founder-password-for-test" } });
   assert.equal(login.statusCode, 200);
   const cookie = String(login.headers["set-cookie"]).split(";")[0]!;
@@ -145,12 +177,14 @@ test("same-origin static UI serves the SPA and assets but keeps API 404s typed",
   await mkdir(join(webRoot, "assets"));
   await writeFile(join(webRoot, "index.html"), "<!doctype html><title>Hardwire test shell</title>");
   await writeFile(join(webRoot, "assets", "app.js"), "console.log('test');");
-  const app = await createApp(config, { fetcher: boundary().fetcher, webRoot });
+  const app = testApp(createApp(config, { fetcher: boundary().fetcher, webRoot }));
   t.after(async () => { await app.close(); await rm(webRoot, { recursive: true, force: true }); });
 
   const root = await app.inject({ method: "GET", url: "/" });
   assert.equal(root.statusCode, 200);
   assert.match(root.headers["content-type"] ?? "", /text\/html/);
+  assert.equal(root.headers["x-content-type-options"], "nosniff");
+  assert.match(root.headers["content-security-policy"] ?? "", /frame-ancestors 'none'/);
   assert.match(root.body, /Hardwire test shell/);
   const route = await app.inject({ method: "GET", url: "/projects/project-1" });
   assert.equal(route.statusCode, 200);

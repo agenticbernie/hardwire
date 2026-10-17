@@ -18,6 +18,10 @@
     "database_name": "hardwire",
     "database_id": "08adc5cc-150e-4365-a9d9-239d52cdcf00"
   }],
+  "services": [{
+    "binding": "DATA_SERVICE",
+    "service": "hardwire-data"
+  }],
   "assets": {
     "directory": "../web/dist",
     "binding": "ASSETS",

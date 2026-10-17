@@ -14,7 +14,7 @@ Execution state is independent from acceptance outcome.
 
 ## API routes
 
-Founder API (native Fetch API Cloudflare Worker adapter; Fastify Node adapter remains available for local use):
+Founder API (shared Hono router; Cloudflare Worker and Node adapters):
 
 | Method and path | Request | Response / behavior |
 |---|---|---|
