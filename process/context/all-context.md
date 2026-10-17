@@ -13,7 +13,7 @@ Hardwire is a new repository scaffold created from an empty workspace on 2026-10
 
 ## Approved product shape
 
-Founder-only PoC. React/Vite UI; Node 24/Fastify API hosted as a conventional Botkeep application; Cloudflare Worker for D1/R2 access and retention; one sequential GitHub Actions runner using OpenCode, PlatformIO, Wokwi, and evidence evaluation. One active product task, one initial coding attempt, up to three repair rounds, 30-minute workflow timeout, $10 total OpenAI PoC budget, 72-hour project retention, private artifacts and `.hardwire.zip` export/import.
+Founder-only PoC. React/Vite UI served from Cloudflare Worker Assets; a native Fetch API Cloudflare Worker for founder routes, reusing shared API auth/service logic; a separate Cloudflare Worker for D1/R2 product data and retention; one sequential GitHub Actions runner using OpenCode, PlatformIO, Wokwi, and evidence evaluation. One active product task, one initial coding attempt, up to three repair rounds, 30-minute workflow timeout, $10 total OpenAI PoC budget, 72-hour project retention, private artifacts and `.hardwire.zip` export/import.
 
 Hardwire agent roles run sequentially. Do not add multiple concurrent product runs or treat Implementer/Evaluator/Repair as parallel agents.
 
@@ -24,8 +24,8 @@ Hardwire agent roles run sequentially. Do not add multiple concurrent product ru
 - Pinned Gunny Arcade snapshot: commit `f8db05d9dd573fb49941ffa510e3d4e9ba66cfbc`; unchanged PlatformIO build succeeds for `esp32dev`.
 - Wokwi CLI 0.28.1 local options and diagram lint work. Actual simulation cannot pass the local authentication gate because `WOKWI_CLI_TOKEN` is absent.
 - Workspace is not a Git checkout. Do not claim branch/diff/commit or GitHub Actions integration proof unless a repository is provided/configured.
-- Botkeep means `botkeep.cloud` for this plan. No public provisioning API was verified; use the supported dashboard/GitHub import and do not invent API calls.
-- Cloudflare bindings and GitHub Actions REST interfaces are documented, but no deploy or dispatch has been made.
+- User approved moving the founder UI/API from Botkeep to Cloudflare Workers after Botkeep reached capacity. Preserve the separate data Worker and Actions runner; do not add concurrent product runs.
+- Cloudflare `hardwire-data` and `hardwire-app` Workers are deployed; D1 migrations 0001/0002 and private R2 are configured, and the shared `DATA_API_TOKEN` is set on both Workers. App UI/health smoke checks return 200. Founder API use requires `FOUNDER_PASSWORD_HASH`; Actions dispatch requires a valid `GITHUB_PAT` and repository secrets/variables. No GitHub Actions dispatch has been made.
 
 ## Security and evidence rules
 

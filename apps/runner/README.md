@@ -30,7 +30,7 @@ The tests exercise safety and runner behavior locally. They do not establish aut
 
 - A GitHub repository with this exact workflow, OIDC `id-token: write`, and configured Worker repository/workflow/audience trust.
 - Repository variables `DATA_WORKER_URL` (HTTPS origin), `HARDWIRE_OIDC_AUDIENCE`; repository secrets `OPENAI_API_KEY`, `WOKWI_CLI_TOKEN`.
-- Deployed Worker/D1/private R2 and an approved immutable run attached to the dispatched GitHub workflow run ID before the exchange. Botkeep/API dispatch and reconciliation must be configured separately.
+- Deployed app Worker, data Worker/D1/private R2, and an approved immutable run attached to the dispatched GitHub workflow run ID before the OIDC exchange. Founder API dispatch/reconciliation requires a valid `GITHUB_PAT` on the app Worker.
 - Real authenticated scenario/Serial/TFT observations, seeded behavior/display faults, cancellation and checkpoint recovery, and independent visual-rubric validation.
 
 Missing `WOKWI_CLI_TOKEN` produces `missing_secret` / `blocked_missing_secret` and acceptance `inconclusive`. The runner stops before spending on OpenCode when either required stage credential is absent.

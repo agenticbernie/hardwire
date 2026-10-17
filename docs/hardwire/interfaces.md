@@ -14,7 +14,7 @@ Execution state is independent from acceptance outcome.
 
 ## API routes
 
-Founder API (Botkeep Node/Fastify):
+Founder API (native Fetch API Cloudflare Worker adapter; Fastify Node adapter remains available for local use):
 
 | Method and path | Request | Response / behavior |
 |---|---|---|
@@ -31,7 +31,7 @@ Founder API (Botkeep Node/Fastify):
 | `GET /api/artifacts/:artifactId` | none | Stream/download after owner and expiry checks |
 | `POST /api/projects/:projectId/export` | none | Export job/status and a signed/authorized download route |
 
-The founder API holds a server-only `DATA_API_TOKEN`; it sends `Authorization: Bearer <DATA_API_TOKEN>` and `X-Founder-Id: founder` to the Worker. The Worker accepts `X-Founder-Id` only with that service token. The founder ID is fixed server configuration for this single-founder PoC and is never accepted from browser input. Browser sessions use the API's secure, HTTP-only cookie and CSRF protection.
+The founder API Worker holds a server-only `DATA_API_TOKEN`; it sends `Authorization: Bearer <DATA_API_TOKEN>` and `X-Founder-Id: founder` to the data Worker. The data Worker accepts `X-Founder-Id` only with that service token. The founder ID is fixed server configuration for this single-founder PoC and is never accepted from browser input. Browser sessions use the API's secure, HTTP-only cookie and CSRF protection. On Cloudflare, session hashes and rate-limit bucket hashes are stored in D1 so requests can safely reach different Worker isolates.
 
 Data Worker routes, accessible only to the founder API or a validated runner token:
 

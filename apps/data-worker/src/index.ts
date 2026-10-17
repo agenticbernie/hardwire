@@ -602,6 +602,8 @@ async function createExport(env: Env, p: Row): Promise<Response> {
 export async function cleanup(env: Env): Promise<void> {
   const now = Date.now();
   await env.DB.prepare('DELETE FROM runner_sessions WHERE expires_at<=?').bind(now).run();
+  await env.DB.prepare('DELETE FROM founder_sessions WHERE expires_at<=?').bind(now).run();
+  await env.DB.prepare('DELETE FROM founder_rate_limits WHERE expires_at<=?').bind(now).run();
   const expiredRuns=(await env.DB.prepare('SELECT r.* FROM runs r JOIN projects p ON p.id=r.project_id WHERE r.expires_at<=? AND r.next_cleanup_at<=? AND p.expires_at>? AND p.deleted_at IS NULL LIMIT 25').bind(now,now,now).all<Row>()).results;
   for(const run of expiredRuns) {
     try {

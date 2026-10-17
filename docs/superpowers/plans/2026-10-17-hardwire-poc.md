@@ -4,7 +4,7 @@
 
 **Goal:** Build and verify the first Hardwire PoC loop for a pinned Gunny Arcade ESP32 project, from approved request through agent changes, firmware build, Wokwi evidence, evaluation, repair, and result reporting.
 
-**Architecture:** A React/Vite founder UI talks to a Node.js 24/Fastify API hosted as a conventional Botkeep application. A Cloudflare Worker owns D1/R2 data operations and expiration. A single GitHub Actions run executes OpenCode, PlatformIO, Wokwi, evidence evaluation, and bounded repairs sequentially. Shared TypeScript contracts define state and evidence across these services.
+**Architecture:** A React/Vite founder UI is served as Cloudflare Worker Assets. A Cloudflare Worker hosts the founder API through a native Fetch API adapter; a separate Cloudflare Worker owns product D1/R2 operations and expiration. A single GitHub Actions run executes OpenCode, PlatformIO, Wokwi, evidence evaluation, and bounded repairs sequentially. Shared TypeScript contracts define state and evidence across these services.
 
 **Tech Stack:** Node.js 24, TypeScript, React, Vite, Fastify, Cloudflare Workers/D1/R2, GitHub Actions, OpenCode CLI 1.18.34 (pin after compatibility check), PlatformIO Core 6.2.0 for the baseline, Wokwi CLI 0.28.1, Zod, Vitest.
 
@@ -33,13 +33,15 @@ FZ-01 proves the unchanged Gunny Arcade snapshot builds with PlatformIO. Wokwi C
 
 FZ-02 proves `gpt-6-luna` direct API access and one real OpenCode headless call. OpenCode reported actual token usage and cost. A 16-token experimental setting did not bound a multi-step session, so the implementation must measure usage after each model event and stop the session when the configured budget is reached; a strict cost ceiling remains unproven.
 
-FZ-03 now includes live Cloudflare deployment evidence: D1/R2 were provisioned, the schema migration was applied, and the Worker plus cleanup cron deployed and returned the expected unauthenticated 401. The shared service secret, Botkeep, GitHub Actions configuration/dispatch, and authenticated workload remain unverified. The configured GitHub REST token is rejected with an account-suspended 403.
+FZ-03 now includes live Cloudflare deployment evidence: D1/R2 were provisioned, migrations 0001/0002 were applied, the data Worker plus cleanup cron deployed and returned the expected unauthenticated 401, and the shared service secret was configured on both Workers. The app Worker and UI are also deployed (FZ-04). Founder login, GitHub Actions configuration/dispatch, and authenticated workload remain unverified. The previously configured GitHub REST token is rejected with an account-suspended 403.
 
 ## Execution status — 2026-10-17
 
+Hosting follow-up approved by the founder: replace Botkeep with a Cloudflare app Worker because Botkeep reached capacity. The implementation introduces `apps/api/src/worker.ts`, Worker Assets routing, D1-backed founder session/rate-limit state, and migration `0002_founder_auth.sql`. Local Wrangler dry-run and Worker auth smoke checks passed. Remote migration 0002 and deployment have since completed; UI/health are live, while authenticated requests await `FOUNDER_PASSWORD_HASH`.
+
 - T00–T05 implementation is present in the workspace. Contracts, API, Worker/migration, sequential runner/workflow, and founder UI have local checks; the API now serves the built UI from the same origin.
 - Root integration follow-ups fixed API resume dispatch semantics, Worker active/resumed-run retention leases, persistent PoC usage and budget admission, per-run attempt history, usage response normalization, cross-service project-detail shape handling, and runner rejected-diff checkpoint safety.
-- Pinned PlatformIO baseline was built locally and inside the isolated runner container. OpenCode/model feasibility calls succeeded. Cloudflare D1/R2/Worker is deployed and smoke-checked, but authenticated Wokwi, real TFT evidence, Botkeep, GitHub Actions dispatch, full repair run, and cloud acceptance demonstrations remain unverified or blocked as detailed in the feasibility record.
+- Pinned PlatformIO baseline was built locally and inside the isolated runner container. OpenCode/model feasibility calls succeeded. Cloudflare D1/R2 and both Workers are deployed and smoke-checked, but authenticated Wokwi, real TFT evidence, founder login, GitHub Actions dispatch, full repair run, and cloud acceptance demonstrations remain unverified or blocked as detailed in the feasibility record.
 - T06 local integration is complete: final workspace tests/typecheck/build and post-build same-origin API smoke pass, requirements traceability and handoff docs are refreshed, and independent cross-component review found no remaining actionable local issue. Cloud/Wokwi-dependent ACs remain blocked or unverified and must not be recorded as passes.
 
 ### Shared API and data contract
@@ -52,7 +54,7 @@ FZ-03 now includes live Cloudflare deployment evidence: D1/R2 were provisioned, 
 - R2 object keys include founder/project/run/attempt scope; objects remain private and are accessible only through authorization-checked Worker routes.
 - Runner evidence records include code/tree, firmware, scenario and criteria hashes, tool versions, elapsed times, checksum, and test-case identity.
 - GitHub dispatch inputs contain only the `run_id`. Runner bootstrap exchanges GitHub Actions OIDC identity with the Worker for a run-scoped short-lived token; that token is not passed into OpenCode or product build processes.
-- Botkeep does not receive a fabricated provisioning endpoint. The app is a Node process with an explicit `npm start` command, and deployment is documented through its supported dashboard/GitHub import.
+- The founder approved Cloudflare Workers as the app/API host after Botkeep reached capacity. The app Worker serves the built UI through Worker Assets and routes API requests through native Fetch handlers; no Botkeep provisioning endpoint is assumed.
 
 ## Task ownership and sequence
 
@@ -75,7 +77,7 @@ No agent edits another task's files. T01 defines contracts before implementation
 3. T03: rerun the pinned baseline build; validate command exit/timeouts, log filtering, evidence hashes, scenario parser and missing-token classification. With no `WOKWI_CLI_TOKEN`, report simulation/Serial/screenshot as blocked, not passed.
 4. T04: exercise API requests for unauthorized access, criterion mutation after approval, repeated idempotency key, a concurrent-run attempt, cancellation, resume after verified interruption, stale events, and usage reporting. Mock only the GitHub HTTP boundary in unit tests; a mock is not live integration proof.
 5. T05: build UI and verify project/import, approval version, live run state, evidence/result distinctions, usage, export/import affordances and expiry display.
-6. T06: run all tests/build checks, inspect agent diffs/files, compare each FR/AC to traceability and evidence. Run live GitHub/Cloudflare/Botkeep/Wokwi actions only where credentials and target resources are configured; never claim unrun acceptance criteria.
+6. T06: run all tests/build checks, inspect agent diffs/files, compare each FR/AC to traceability and evidence. Run live GitHub/Cloudflare/Wokwi actions only where credentials and target resources are configured; never claim unrun acceptance criteria.
 7. After credentials are configured: baseline simulation, seeded behavior/display faults, recovery/export/import, short-TTL cleanup, a separate 72-hour deletion observation, then three independent demo runs.
 
 ## File map
@@ -92,6 +94,6 @@ No agent edits another task's files. T01 defines contracts before implementation
 
 ## Current execution record
 
-The implementation is published to [agenticbernie/hardwire](https://github.com/agenticbernie/hardwire), branch `main`. This handoff update records the live binding config and deployment evidence. Cloudflare D1 `hardwire` (APAC, `08adc5cc-150e-4365-a9d9-239d52cdcf00`), private R2 bucket `hardwire-private`, migration `0001_hardwire.sql`, and Worker version `5042c1b2-bec7-4ebe-8af8-fcff7281de82` are live. Worker origin: `https://hardwire-data.bernie-web3.workers.dev`; unauthenticated smoke request returned `401 service_auth_required`. No GitHub Actions run has been dispatched. The preconfigured `GITHUB_PAT` REST request returned 403 `Sorry. Your account was suspended`; no Actions variables/secrets were changed. `WOKWI_CLI_TOKEN` is absent from the local environment. `DATA_API_TOKEN` is not configured because it must match the Botkeep secret, and Botkeep deployment is pending.
+The implementation is present in the supplied [agenticbernie/hardwire](https://github.com/agenticbernie/hardwire) project workspace; the current local workspace has no Git metadata. This handoff update records live binding and deployment evidence. Cloudflare D1 `hardwire` (APAC, `08adc5cc-150e-4365-a9d9-239d52cdcf00`), private R2 bucket `hardwire-private`, migrations `0001_hardwire.sql` and `0002_founder_auth.sql`, and both Workers are live. Data Worker version `edc3368a-3f05-4877-a8ec-284b3fe78c61` serves `https://hardwire-data.bernie-web3.workers.dev`; app Worker version `084eb22a-be86-4dde-8537-b6b4a6a77b52` serves `https://hardwire-app.bernie-web3.workers.dev`. The shared `DATA_API_TOKEN` is configured on both Workers. Data unauthenticated smoke returned `401 service_auth_required`; app `/` and `/healthz` returned 200, while `/api/usage` returned typed `503 missing_secret` because `FOUNDER_PASSWORD_HASH` is not yet configured. No GitHub Actions run has been dispatched. The preconfigured `GITHUB_PAT` REST request returned 403 `Sorry. Your account was suspended`; no Actions variables/secrets were changed. `WOKWI_CLI_TOKEN` is absent from the local environment.
 
-Final local component evidence: contracts 5/5, API 25/25, Worker 18/18, runner 17/17, and UI 6/6 (71/71 total). Root `npm run typecheck` and `npm run build` passed; API tests passed again after the generated UI build, including same-origin SPA/assets and protected API routing. The isolated runner Docker image and actual pinned PlatformIO baseline build also passed. These checks do not claim Wokwi or deployed-service acceptance.
+At the time of the initial implementation record, local component evidence was contracts 5/5, API 25/25, Worker 18/18, runner 17/17, and UI 6/6 (71/71 total). Subsequent app Worker work added D1 auth-store coverage; see current verification output and the feasibility record for the latest totals. Root checks and the isolated runner Docker image/pinned PlatformIO baseline build passed. These checks do not claim Wokwi or deployed-service acceptance.

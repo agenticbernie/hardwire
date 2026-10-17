@@ -17,9 +17,9 @@ The tests use Node's in-memory SQLite database behind a small D1 interface fixtu
 
 Set `DATA_API_TOKEN` as a Worker secret; the founder API must use the same value. Service calls require `Authorization: Bearer <DATA_API_TOKEN>` and `X-Founder-Id: founder`. The founder ID is fixed for this PoC. Keep the token outside the product workspace and logs.
 
-The live Worker is `https://hardwire-data.bernie-web3.workers.dev`. D1 `hardwire` is in APAC with ID `08adc5cc-150e-4365-a9d9-239d52cdcf00`; migration `0001_hardwire.sql` is applied. Private R2 bucket `hardwire-private` is in APAC. `wrangler.jsonc` pins these bindings and trusts `agenticbernie/hardwire` plus the exact `main` workflow ref. The Worker has `*/15 * * * *` cleanup configured. The R2 bucket has not been made public; runtime access uses its private binding.
+The live Worker is `https://hardwire-data.bernie-web3.workers.dev`. D1 `hardwire` is in APAC with ID `08adc5cc-150e-4365-a9d9-239d52cdcf00`; migrations `0001_hardwire.sql` and `0002_founder_auth.sql` are applied. Private R2 bucket `hardwire-private` is in APAC. `wrangler.jsonc` pins these bindings and trusts `agenticbernie/hardwire` plus the exact `main` workflow ref. The Worker has `*/15 * * * *` cleanup configured. The R2 bucket has not been made public; runtime access uses its private binding.
 
-Set `DATA_API_TOKEN` with `wrangler secret put DATA_API_TOKEN --config apps/data-worker/wrangler.jsonc`, and set the identical value as the Botkeep API secret through its secure configuration UI. This secret is currently unset. Until both locations match, founder service operations are unavailable. Do not use a Worker variable or commit the token to the repository.
+The shared `DATA_API_TOKEN` has been generated and set as a secret on both `hardwire-data` and `hardwire-app`. For a fresh environment, set the same random value on each Worker with `wrangler secret put DATA_API_TOKEN --config apps/data-worker/wrangler.jsonc` and `wrangler secret put DATA_API_TOKEN --config apps/api/wrangler.jsonc`. Do not use a Worker variable or commit the token to the repository.
 
 ## Runner authority
 

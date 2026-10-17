@@ -14,10 +14,14 @@
     "test:contracts": "node --experimental-strip-types --test packages/contracts/test/*.test.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "founder:password": "node --experimental-strip-types scripts/set-founder-password.mjs",
+    "dev:cloudflare-app": "npm run build --workspace @hardwire/web && wrangler dev --config apps/api/wrangler.jsonc --persist-to .wrangler",
+    "deploy:cloudflare-app": "npm run typecheck --workspace @hardwire/api && npm run build --workspace @hardwire/web && wrangler deploy --config apps/api/wrangler.jsonc"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "4.151.1"
   }
 }

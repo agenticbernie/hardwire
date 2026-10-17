@@ -1,6 +1,6 @@
-# Founder API
+# Founder API and Cloudflare Worker
 
-Node.js 24 and Fastify API for the single-founder Hardwire PoC. Run from the repository with `npm start --workspace @hardwire/api`. The coordinator installs workspace dependencies; this package does not require a separate lockfile.
+Fastify API for local Node development and a native Fetch API adapter for Cloudflare Workers. Deploy `src/worker.ts` with `wrangler deploy --config apps/api/wrangler.jsonc`; it serves `apps/web/dist` through Worker Assets and reuses the API service/auth logic without starting a Node HTTP server.
 
 ## Configuration
 
@@ -14,17 +14,18 @@ Node.js 24 and Fastify API for the single-founder Hardwire PoC. Run from the rep
 | `GITHUB_OWNER`, `GITHUB_REPO` | Explicit target repository |
 | `GITHUB_WORKFLOW` | Workflow file name; defaults to `hardwire-poc.yml` |
 | `GITHUB_REF` | Explicit deployed workflow ref; defaults to `main` |
-| `HOST`, `PORT` | Listen address, defaults to `127.0.0.1:3000`; use host `0.0.0.0` when the hosting runtime requires it |
+| `HOST`, `PORT` | Node adapter listen address; the Cloudflare Worker adapter supplies its internal HTTP server port |
+| `AUTH_DB` | Worker-only D1 binding to the `hardwire` database; stores hashed founder sessions and rate-limit buckets |
 
-Use the exported `passwordHash()` helper in `src/auth.ts` with an operational secret-input mechanism to provision the password digest. Avoid plaintext passwords in shell history. The API does not print configuration, upstream response bodies, request cookies, authentication headers, or stack traces.
+From the repository root, run `npm run founder:password` in an interactive terminal to provision the Cloudflare `FOUNDER_PASSWORD_HASH`. It reads the password twice with terminal echo disabled, derives the scrypt digest with `passwordHash()`, and pipes only the digest to Wrangler stdin. Avoid putting plaintext passwords or hashes in command arguments, shell history, or chat. The API does not print configuration, upstream response bodies, request cookies, authentication headers, or stack traces.
 
-The Worker receives a fixed server-owned founder ID (default `founder`) in `X-Founder-Id`, with `DATA_API_TOKEN` in the Authorization header. These credentials never enter browser responses or workflow dispatch inputs. Build the UI with `npm run build --workspace @hardwire/web` before starting the API; Fastify serves the generated `apps/web/dist` shell and assets from the same origin as `/api`. For local UI development, run Vite and set `HARDWIRE_API_ORIGIN` to the API origin. Browser API calls include credentials; every mutation after login also sends the `x-csrf-token` returned by login/session. Cookies always use Secure, HttpOnly, SameSite=Strict, and the `__Host-` prefix.
+The data Worker receives a fixed server-owned founder ID (default `founder`) in `X-Founder-Id`, with `DATA_API_TOKEN` in the Authorization header. These credentials never enter browser responses or workflow dispatch inputs. Cloudflare Worker Assets serves `apps/web/dist` from the same origin as `/api`; Vite local development proxies `/api` to the Node adapter. Browser API calls include credentials; every mutation after login also sends the `x-csrf-token` returned by login/session. Cookies always use Secure, HttpOnly, SameSite=Strict, and the `__Host-` prefix.
 
 ## Session and request behavior
 
 `POST /api/auth/login` accepts `{password}`. There is no signup route. `GET /api/auth/session` returns the founder identity, session expiry and CSRF token; `POST /api/auth/logout` revokes the session. Login rotates prior sessions. Sessions expire after eight hours and do not extend on reads.
 
-Sessions and rate-limit buckets are held in this Node process. Run exactly one API process for this PoC. A process restart invalidates sessions; multiple replicas are unsupported until sessions and rate limits use shared storage. Forwarded IP headers are not trusted, so an untrusted client cannot bypass limits by changing `X-Forwarded-For`. A reverse proxy may make users share a rate-limit bucket, which is acceptable for one founder.
+The local Node adapter uses in-memory session and rate-limit state. The Cloudflare Worker uses `D1FounderAuthStore`: successful login rotates the durable session row, session lookups survive isolate restarts, rate-limit bucket keys are hashed before storage, and the data Worker cleanup cron removes expired rows. Forwarded IP headers are not trusted, so an untrusted client cannot bypass limits by changing `X-Forwarded-For`.
 
 Task creation stores an immutable task. `POST /api/tasks/:taskId/revisions` accepts `{objective,allowedPaths,limits,criteria}` and derives the next version from the latest stored task; the Worker rejects racing duplicate revisions. A revision keeps its task ID, computes a fresh approval hash and starts unapproved. Approval requires an exact version/hash match. The task revision loaded for run start supplies the internal criteria hash.
 
@@ -42,4 +43,4 @@ Run polling reports execution, acceptance, criteria, attempts, usage, authorized
 
 ## Verification and remaining live work
 
-`npm test --workspace @hardwire/api` runs Fastify injection tests with stubbed Worker/GitHub HTTP boundaries, including same-origin SPA fallback and asset serving. `npm run build --workspace @hardwire/api` performs scoped TypeScript checking. These are local route/contract tests, not evidence of deployed Worker, D1/R2, Botkeep, GitHub dispatch/cancel, Wokwi execution, or archive round-trip integration. Live work requires configured deployed services, repository/workflow, credentials and real evidence.
+`npm test --workspace @hardwire/api` runs Fastify injection tests with stubbed Worker/GitHub HTTP boundaries, including same-origin SPA fallback and asset serving. `npm run build --workspace @hardwire/api` performs scoped TypeScript checking. `npm run dev:worker --workspace @hardwire/api` runs the Cloudflare adapter locally after Vite assets and secrets are configured. These checks are not evidence of deployed D1/R2, GitHub dispatch/cancel, Wokwi execution, or archive round-trip integration. Live work requires configured deployed services, repository/workflow, credentials and real evidence.

@@ -5,6 +5,8 @@ import { readFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FounderAuth, RateLimiter } from "./auth.ts";
+import { MemoryFounderAuthStore } from "./auth-store.ts";
+import type { FounderAuthStore } from "./auth-store.ts";
 import { ApiError, publicError } from "./errors.ts";
 import { GitHubActions } from "./github.ts";
 import { FounderService } from "./service.ts";
@@ -12,18 +14,21 @@ import { WorkerClient } from "./worker-client.ts";
 import type { ApiConfig } from "./config.ts";
 import type { Fetcher } from "./worker-client.ts";
 
-const webRoot = resolve(fileURLToPath(new URL("../../web/dist", import.meta.url)));
 const webTypes: Record<string, string> = {
   ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".ico": "image/x-icon",
   ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png",
   ".svg": "image/svg+xml", ".webp": "image/webp", ".woff": "font/woff", ".woff2": "font/woff2",
 };
 
-export async function createApp(config: ApiConfig, options: { fetcher?: Fetcher; now?: () => number; webRoot?: string } = {}) {
-  const servedWebRoot = options.webRoot ? resolve(options.webRoot) : webRoot;
+export async function createApp(config: ApiConfig, options: { fetcher?: Fetcher; now?: () => number; webRoot?: string; serveStatic?: boolean; authStore?: FounderAuthStore } = {}) {
+  const serveStatic = options.serveStatic !== false;
+  const servedWebRoot = serveStatic
+    ? resolve(options.webRoot ?? fileURLToPath(new URL("../../web/dist", import.meta.url)))
+    : undefined;
   const app = Fastify({ logger: false, bodyLimit: 256 * 1024, trustProxy: false, requestTimeout: 60_000 });
-  const auth = new FounderAuth(config.founderPasswordHash, config.publicOrigin, options.now);
-  const limiter = new RateLimiter(options.now);
+  const authStore = options.authStore ?? new MemoryFounderAuthStore();
+  const auth = new FounderAuth(config.founderPasswordHash, config.publicOrigin, options.now, authStore);
+  const limiter = new RateLimiter(options.now, authStore);
   const worker = new WorkerClient(config.workerUrl, config.dataApiToken, config.founderId, options.fetcher);
   const service = new FounderService(worker, new GitHubActions(config, options.fetcher));
 
@@ -35,7 +40,7 @@ export async function createApp(config: ApiConfig, options: { fetcher?: Fetcher;
     reply.header("content-security-policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
     reply.header("referrer-policy", "no-referrer");
     if (request.url === "/healthz" && request.method === "GET") return;
-    limiter.take(`request:${request.ip}`, 120);
+    await limiter.take(`request:${request.ip}`, 120);
     const mutation = !["GET", "HEAD", "OPTIONS"].includes(request.method);
     const pathname = new URL(request.url, config.publicOrigin).pathname;
     // The login shell and its hashed assets must be available before a founder
@@ -43,11 +48,11 @@ export async function createApp(config: ApiConfig, options: { fetcher?: Fetcher;
     if (!pathname.startsWith("/api/") && !mutation && (request.method === "GET" || request.method === "HEAD")) return;
     if (mutation) auth.requireOrigin(typeof request.headers.origin === "string" ? request.headers.origin : undefined);
     if (request.url === "/api/auth/login" && request.method === "POST") {
-      limiter.take(`login:${request.ip}`, 5);
-      limiter.take("login:global", 20);
+      await limiter.take(`login:${request.ip}`, 5);
+      await limiter.take("login:global", 20);
       return;
     }
-    const session = auth.session(request.headers.cookie);
+    const session = await auth.session(request.headers.cookie);
     if (mutation) auth.requireCsrf(session, typeof request.headers["x-csrf-token"] === "string" ? request.headers["x-csrf-token"] : undefined);
   });
 
@@ -72,11 +77,11 @@ export async function createApp(config: ApiConfig, options: { fetcher?: Fetcher;
     return { founder: { id: config.founderId }, csrfToken: result.csrfToken, expiresAt: result.expiresAt };
   });
   app.get("/api/auth/session", async (request) => {
-    const session = auth.session(request.headers.cookie);
+    const session = await auth.session(request.headers.cookie);
     return { founder: { id: config.founderId }, csrfToken: session.csrfToken, expiresAt: new Date(session.expiresAt).toISOString() };
   });
   app.post("/api/auth/logout", async (_request, reply) => {
-    reply.header("set-cookie", auth.logout());
+    reply.header("set-cookie", await auth.logout());
     reply.code(204).send();
   });
 
@@ -126,6 +131,7 @@ export async function createApp(config: ApiConfig, options: { fetcher?: Fetcher;
     if (pathname === "/api" || pathname.startsWith("/api/")) {
       return reply.code(404).send(publicError(new ApiError(404, "not_found", "The requested API route does not exist.")).body);
     }
+    if (!serveStatic || !servedWebRoot) return reply.code(404).send();
     if (request.method !== "GET" && request.method !== "HEAD") return reply.code(404).send();
     let decoded: string;
     try { decoded = decodeURIComponent(pathname); } catch { return reply.code(404).send(); }

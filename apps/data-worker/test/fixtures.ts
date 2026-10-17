@@ -8,7 +8,10 @@ import { SNAPSHOT_COMMIT } from '../src/snapshot.ts';
 export class LocalDatabase implements Database {
   sqlite = new DatabaseSync(':memory:');
   private tail:Promise<unknown>=Promise.resolve();
-  constructor() { this.sqlite.exec(readFileSync(new URL('../../../db/migrations/0001_hardwire.sql',import.meta.url),'utf8')); }
+  constructor() {
+    this.sqlite.exec(readFileSync(new URL('../../../db/migrations/0001_hardwire.sql',import.meta.url),'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../../db/migrations/0002_founder_auth.sql',import.meta.url),'utf8'));
+  }
   prepare(sql:string): Statement {
     let values: any[] = [];
     const statement: Statement = {

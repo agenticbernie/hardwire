@@ -8,7 +8,9 @@
     "start": "node --experimental-strip-types src/server.ts",
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build": "npm run typecheck"
+    "build": "npm run typecheck",
+    "dev:worker": "wrangler dev --config wrangler.jsonc --persist-to ../../.wrangler",
+    "deploy:worker": "wrangler deploy --config wrangler.jsonc"
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.3",

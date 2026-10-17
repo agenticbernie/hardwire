@@ -38,23 +38,34 @@ Sources: [Wokwi CLI usage](https://docs.wokwi.com/wokwi-ci/cli-usage), [Wokwi au
 
 Sources: [GPT-6 Luna model](https://developers.openai.com/api/docs/models/gpt-6-luna), [OpenAI image guide](https://developers.openai.com/api/docs/guides/images-vision), [OpenCode CLI](https://opencode.ai/docs/cli/), [OpenCode provider configuration](https://docs.opencode.ai/docs/providers/).
 
-## FZ-03 — Botkeep, GitHub Actions, Worker, D1, and R2
+## FZ-03 — Cloudflare data Worker, D1/R2, and GitHub Actions
 
-**Core Cloudflare path: deployed and smoke-checked. GitHub Actions and Botkeep integration: blocked/unverified.**
+**Cloudflare data plane: deployed. GitHub Actions dispatch: blocked/unverified.**
 
-- Local Node.js is 24.21.0 and npm is 11.19.0. Wrangler 4.151.1 was run from its ephemeral npx installation; GitHub CLI is absent. PlatformIO and Wokwi were installed only in disposable `/tmp` locations for FZ-01.
+- Local Node.js is 24.21.0 and npm is 11.19.0. Wrangler 4.151.1 is now pinned in the workspace. PlatformIO and Wokwi were installed only in disposable `/tmp` locations for FZ-01.
 - The preconfigured `GITHUB_PAT` returned HTTP 403 for GitHub `/user` and repository Actions APIs with `Sorry. Your account was suspended`. No repository variables or secrets were set and no workflow was dispatched. Its value was not printed.
-- After the user approved Wrangler device login, `whoami` authenticated the Cloudflare account. Created D1 `hardwire` (ID `08adc5cc-150e-4365-a9d9-239d52cdcf00`, APAC) and private-by-default R2 bucket `hardwire-private` (APAC). Applied migration `0001_hardwire.sql`; a remote read confirmed the expected application tables and Wrangler reported no pending migrations.
-- Deployed Worker `hardwire-data` as version `5042c1b2-bec7-4ebe-8af8-fcff7281de82` at `https://hardwire-data.bernie-web3.workers.dev`, with the D1/R2 bindings and `*/15 * * * *` cleanup cron. An unauthenticated HTTPS request returned the expected `401 service_auth_required`, confirming the Worker endpoint is live. This is not an authenticated API or workflow integration test.
-- Worker secret `DATA_API_TOKEN` is not configured because it must also be set as the matching Botkeep API secret through a secure platform configuration. Botkeep deployment/account access is still unverified.
+- D1 `hardwire` (ID `08adc5cc-150e-4365-a9d9-239d52cdcf00`, APAC) and private R2 bucket `hardwire-private` (APAC) are live. Migrations `0001_hardwire.sql` and `0002_founder_auth.sql` are applied remotely.
+- Data Worker `hardwire-data` is live at `https://hardwire-data.bernie-web3.workers.dev`, with D1/R2 bindings and the `*/15 * * * *` cleanup cron. The current version is `edc3368a-3f05-4877-a8ec-284b3fe78c61`. An unauthenticated HTTPS request returned the expected `401 service_auth_required`.
+- One randomly generated `DATA_API_TOKEN` was set through Wrangler's secret manager on both Cloudflare Workers. Its value was not printed or stored in the repository.
 - `OPENAI_API_KEY` exists in the local environment but was not transferred to GitHub; `WOKWI_CLI_TOKEN` is absent. GitHub Actions secret state remains unverified.
-- Assuming Botkeep means `botkeep.cloud`, its docs cover Node.js apps and GitHub/ZIP imports. No public programmatic provisioning contract was found, so deployment must use the dashboard or documented import workflow.
-- Cloudflare Workers support native D1 and R2 bindings. GitHub documents workflow dispatch and run cancellation; a live dispatch needs a Hardwire repository, workflow, and appropriate Actions write permission.
-- No Botkeep, Cloudflare, or GitHub write action was performed during the initial probe. The user later provided [agenticbernie/hardwire](https://github.com/agenticbernie/hardwire); the implementation and dispatch-only workflow were published to `main` at commit `3f783b7`. No workflow dispatch or cloud deployment has occurred.
+- Botkeep was the original hosting target. After the founder reported that it had reached capacity, the founder approved Cloudflare Workers for the app/API while retaining GitHub Actions as the product runner.
 
-**Decision:** Cloudflare Worker owns D1/R2 data access. The Botkeep Node process serves founder-facing API and dispatches Actions using a configured GitHub REST integration. Keep Botkeep provisioning manual until its account-specific flow is verified. Use a GitHub OIDC exchange for short-lived runner access rather than putting a permanent Cloudflare credential in the product workspace.
+**Decision:** Keep `hardwire-data` as the D1/R2 boundary, host founder UI/API on a separate Worker, and run OpenCode/PlatformIO/Wokwi in GitHub Actions. Use a GitHub OIDC exchange for short-lived runner access rather than putting a permanent Cloudflare credential in the product workspace.
 
-Sources: [Botkeep docs](https://botkeep.cloud/docs), [Cloudflare D1 Worker API](https://developers.cloudflare.com/d1/worker-api/), [Cloudflare bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/), [GitHub workflow dispatch](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event), [GitHub cancellation](https://docs.github.com/en/rest/actions/workflow-runs#cancel-a-workflow-run).
+Sources: [Cloudflare D1 Worker API](https://developers.cloudflare.com/d1/worker-api/), [Cloudflare bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/), [GitHub workflow dispatch](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event), [GitHub cancellation](https://docs.github.com/en/rest/actions/workflow-runs#cancel-a-workflow-run).
+
+## FZ-04 — Cloudflare founder UI/API Worker
+
+**Worker Assets and native API routing: locally and remotely deployed. Founder login: awaiting a founder password hash.**
+
+- A first attempt to run Fastify behind Cloudflare's Node HTTP adapter failed in local Workerd because Fastify's route compilation uses `new Function`, which the runtime blocks. The API Worker now uses native Fetch `Request`/`Response` routing and reuses the existing auth, service, GitHub, and data-client modules.
+- `wrangler deploy --dry-run --config apps/api/wrangler.jsonc` succeeded. The bundle was 814.58 KiB (131.10 KiB gzip) and included the Vite SPA assets, D1 binding, and asset routing.
+- Local Wrangler tests against local D1 applied migrations 0001/0002. The Worker served `/` and `/healthz`; login/session/logout returned 200/200/204, and the revoked cookie returned 401. API tests passed 26/26, including D1 session rotation and persistent rate-limit checks.
+- Remote migration 0002 was applied, the data Worker was redeployed, and app Worker `hardwire-app` version `084eb22a-be86-4dde-8537-b6b4a6a77b52` was deployed at `https://hardwire-app.bernie-web3.workers.dev`.
+- Remote smoke checks returned 200 for `/healthz` and `/`, with the Hardwire shell present. `/api/usage` returned the expected typed 503 `missing_secret` because `FOUNDER_PASSWORD_HASH` is not configured. No founder login or authenticated API request has passed remotely.
+- `GITHUB_PAT` is also not configured on the app Worker. Even after founder login is enabled, starting/cancelling Actions runs remains unavailable until a valid repository-scoped GitHub token is supplied.
+
+Sources: [Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/binding/), [Cloudflare Node.js HTTP compatibility](https://developers.cloudflare.com/workers/runtime-apis/nodejs/http/).
 
 ## Open prerequisites
 
@@ -66,12 +77,11 @@ Sources: [Botkeep docs](https://botkeep.cloud/docs), [Cloudflare D1 Worker API](
 
 | Item | State | Needed to prove |
 |---|---|---|
-| Cloudflare resources and deployment | D1/R2 provisioned, migration applied, Worker deployed and unauthenticated endpoint smoke-checked | Configure the shared `DATA_API_TOKEN`; validate authenticated API calls and runner OIDC exchange |
+| Cloudflare data plane | D1/R2 deployed, both migrations applied, data Worker updated, shared service token configured | Authenticated API calls, runner OIDC exchange, and authorized R2 object persistence |
+| Cloudflare founder API/UI | App Worker and static UI deployed; health/root return 200 | Set `FOUNDER_PASSWORD_HASH`, verify login/session and authorized data calls |
 | GitHub Actions API credential | REST requests returned 403 suspension message; no repository variables/secrets changed or workflow run dispatched | Restore valid GitHub Actions write access; configure Worker URL/audience variables and runner secrets |
 | `WOKWI_CLI_TOKEN` | Absent in the local feasibility environment; repository secret state unverified | Authenticated scenarios, Serial output, TFT screenshots, simulator quota and duration |
 | Hardwire GitHub repository and workflow | Workflow published on `main`; OIDC trust configured in deployed Worker, but Actions vars/secrets and dispatch unverified | Live Actions dispatch/cancel and three independent cloud runs |
-| Botkeep account/runtime assignment | Unverified | Deployment, host, port/domain and process supervision |
-| Worker secret and Botkeep shared credential | Not configured | Same `DATA_API_TOKEN` in Worker secret and Botkeep API secret; authenticated API smoke test |
 | D1/R2 checkpoint persistence | Bindings are live; no project/checkpoint data written | Real authorized upload/download/checksum and cleanup validation |
 | 72-hour elapsed retention run | Not started | Actual 72-hour operational deletion evidence |
 | Visual rubric quality | Not evaluated | Correct detections across real baseline and seeded display failures |
