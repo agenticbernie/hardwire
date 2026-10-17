@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { approvalMaterialSchema, criterionSchema, hashApprovalMaterial, hashSchema, runStartRequestSchema, taskLimitsSchema } from "../../../packages/contracts/src/index.ts";
 import { ApiError } from "./errors.ts";
+import { GitHubDispatchError } from "./github.ts";
 import type { GitHubActions, WorkflowStatus } from "./github.ts";
 import type { JsonRecord, WorkerClient } from "./worker-client.ts";
 
@@ -34,6 +35,10 @@ const projectFields = ["id", "projectId", "name", "source", "expiresAt", "create
 const taskFields = ["id", "taskId", "projectId", "taskVersion", "version", "objective", "allowedPaths", "limits", "criteria", "criteriaHash", "approvalHash", "approvedAt", "expiresAt"];
 const runFields = ["id", "runId", "projectId", "taskId", "taskVersion", "executionState", "acceptanceOutcome", "approvalHash", "criteriaHash", "workflowRunId", "workflowUrl", "cancelRequested", "cancellationRequested", "attempt", "reason", "createdAt", "startedAt", "endedAt", "finishedAt", "expiresAt", "summary"];
 const artifactFields = ["id", "artifactId", "runId", "attempt", "testCaseId", "kind", "sourceHash", "firmwareHash", "scenarioHash", "criteriaHash", "toolVersions", "sha256", "byteSize", "mediaType", "capturedAt", "expiresAt"];
+
+function dispatchDiagnostic(error: unknown): { code: string; httpStatus?: number; requestId?: string } {
+  return error instanceof GitHubDispatchError ? error.diagnostic : { code: "unexpected_error" };
+}
 
 export class FounderService {
   private readonly worker: WorkerClient;
@@ -119,8 +124,10 @@ export class FounderService {
     if (typeof result.created !== "boolean") throw new ApiError(502, "invalid_upstream_response", "The data service did not confirm the dispatch claim.");
     if (!result.created) return { run: pick(run, runFields), created: false, dispatch: { status: run.workflowRunId ? "attached" : "pending_reconciliation" } };
     let workflow;
-    try { workflow = await this.github.dispatch(runId); } catch {
-      return { run: pick(run, runFields), created: true, dispatch: { status: "pending_reconciliation", reason: "dispatch_unknown", message: "Dispatch outcome requires reconciliation; retrying start will return this run without dispatching again." } };
+    try { workflow = await this.github.dispatch(runId); } catch (error) {
+      const diagnostic = dispatchDiagnostic(error);
+      console.error("hardwire_github_dispatch_failed", { runId, ...diagnostic });
+      return { run: pick(run, runFields), created: true, dispatch: { status: "pending_reconciliation", reason: "dispatch_unknown", diagnostic, message: "Dispatch outcome requires reconciliation; retrying start will return this run without dispatching again." } };
     }
     try {
       const attached = await this.worker.json(`/v1/runs/${runId}/workflow`, "POST", workflow);
@@ -145,8 +152,10 @@ export class FounderService {
     if (typeof result.created !== "boolean") throw new ApiError(502, "invalid_upstream_response", "The data service did not confirm the resume claim.");
     if (!result.created) return { run: pick(run, runFields), created: false, dispatch: { status: run.workflowRunId ? "attached" : "pending_reconciliation" } };
     let workflow;
-    try { workflow = await this.github.dispatch(resolvedRunId); } catch {
-      return { run: pick(run, runFields), created: true, dispatch: { status: "pending_reconciliation", reason: "dispatch_unknown", message: "Dispatch outcome requires reconciliation; retrying resume will not dispatch again." } };
+    try { workflow = await this.github.dispatch(resolvedRunId); } catch (error) {
+      const diagnostic = dispatchDiagnostic(error);
+      console.error("hardwire_github_resume_dispatch_failed", { runId: resolvedRunId, ...diagnostic });
+      return { run: pick(run, runFields), created: true, dispatch: { status: "pending_reconciliation", reason: "dispatch_unknown", diagnostic, message: "Dispatch outcome requires reconciliation; retrying resume will not dispatch again." } };
     }
     try {
       const attached = await this.worker.json(`/v1/runs/${resolvedRunId}/workflow`, "POST", workflow);

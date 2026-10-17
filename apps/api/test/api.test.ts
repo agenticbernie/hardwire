@@ -133,10 +133,11 @@ function boundary(options: { dispatch?: "ok" | "missing" | "timeout" | "failed";
       assert.notEqual(new Headers(init.headers).get("authorization"), `Bearer ${config.dataApiToken}`);
       if (path.endsWith("/dispatches")) {
         dispatchCount++;
+        assert.equal(new URL(url).searchParams.get("return_run_details"), "true");
         assert.deepEqual(body, { ref: "main", inputs: { run_id: "run-1" } });
         if (options.dispatch === "timeout") throw new Error("network lost");
         if (options.dispatch === "missing") return new Response(null, { status: 204 });
-        if (options.dispatch === "failed") return json({ message: "private failure" }, 500);
+        if (options.dispatch === "failed") return new Response(JSON.stringify({ message: "private failure" }), { status: 500, headers: { "content-type": "application/json", "x-github-request-id": "GHREQ123" } });
         return json({ workflow_run_id: 42, html_url: "https://untrusted.example/ignored" });
       }
       if (path.endsWith("/cancel")) { cancellationCount++; return new Response(null, { status: 202 }); }
@@ -255,6 +256,9 @@ for (const outcome of ["missing", "timeout", "failed"] as const) test(`dispatch 
     const response = await app.inject({ method: "POST", url: "/api/tasks/task-1/runs", headers, payload: { version: 1, approvalHash: taskHash, idempotencyKey: "same-key-1" } });
     assert.equal(response.statusCode, 202);
     assert.equal(response.json().dispatch.status, "pending_reconciliation");
+    if (i === 0 && outcome === "failed") assert.deepEqual(response.json().dispatch.diagnostic, { code: "github_http_error", httpStatus: 500, requestId: "GHREQ123" });
+    if (i === 0 && outcome === "missing") assert.deepEqual(response.json().dispatch.diagnostic, { code: "invalid_response", httpStatus: 204 });
+    if (i === 0 && outcome === "timeout") assert.deepEqual(response.json().dispatch.diagnostic, { code: "network_error" });
     assert.doesNotMatch(response.body, /test-github-token|test-data-token|private failure/);
   }
   assert.equal(mock.dispatchCount(), 1);

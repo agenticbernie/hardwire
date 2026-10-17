@@ -4,6 +4,17 @@ import type { ApiConfig } from "./config.ts";
 
 export type WorkflowIdentity = { workflowRunId: string; workflowUrl: string };
 export type WorkflowStatus = WorkflowIdentity & { status: string; conclusion: string | null; durationSeconds: number | null };
+export type DispatchDiagnostic = { code: string; httpStatus?: number; requestId?: string };
+
+export class GitHubDispatchError extends Error {
+  readonly diagnostic: DispatchDiagnostic;
+
+  constructor(diagnostic: DispatchDiagnostic) {
+    super("GitHub workflow dispatch could not be confirmed.");
+    this.name = "GitHubDispatchError";
+    this.diagnostic = diagnostic;
+  }
+}
 
 export class GitHubActions {
   private readonly config: Pick<ApiConfig, "githubToken" | "githubOwner" | "githubRepo" | "githubWorkflow" | "githubRef">;
@@ -19,11 +30,11 @@ export class GitHubActions {
 
   async dispatch(runId: string): Promise<WorkflowIdentity> {
     this.requireConfigured();
-    const response = await this.call(`/actions/workflows/${encodeURIComponent(this.config.githubWorkflow)}/dispatches`, "POST", { ref: this.config.githubRef, inputs: { run_id: runId } });
+    const response = await this.call(`/actions/workflows/${encodeURIComponent(this.config.githubWorkflow)}/dispatches?return_run_details=true`, "POST", { ref: this.config.githubRef, inputs: { run_id: runId } }, false, true);
     let data: JsonRecord;
-    try { data = await response.json() as JsonRecord; } catch { throw this.unknown(); }
+    try { data = await response.json() as JsonRecord; } catch { throw this.unknown(response); }
     const id = data.workflow_run_id;
-    if (!(typeof id === "string" && /^[1-9]\d*$/.test(id)) && !(typeof id === "number" && Number.isSafeInteger(id) && id > 0)) throw this.unknown();
+    if (!(typeof id === "string" && /^[1-9]\d*$/.test(id)) && !(typeof id === "number" && Number.isSafeInteger(id) && id > 0)) throw this.unknown(response);
     return this.identity(String(id));
   }
 
@@ -52,9 +63,12 @@ export class GitHubActions {
     return { workflowRunId: id, workflowUrl: `https://github.com/${this.config.githubOwner}/${this.config.githubRepo}/actions/runs/${id}` };
   }
 
-  private unknown(): ApiError { return new ApiError(503, "dispatch_unknown", "GitHub dispatch needs reconciliation. This run will not be dispatched again."); }
+  private unknown(response?: Response): GitHubDispatchError {
+    const requestId = response?.headers.get("x-github-request-id");
+    return new GitHubDispatchError({ code: "invalid_response", ...(response ? { httpStatus: response.status } : {}), ...(requestId ? { requestId } : {}) });
+  }
 
-  private async call(path: string, method = "GET", body?: unknown, allowConflict = false): Promise<Response> {
+  private async call(path: string, method = "GET", body?: unknown, allowConflict = false, dispatch = false): Promise<Response> {
     this.requireConfigured();
     let response: Response;
     try {
@@ -66,9 +80,17 @@ export class GitHubActions {
         redirect: "manual",
         signal: AbortSignal.timeout(15_000),
       });
-    } catch { throw method === "POST" && path.endsWith("/dispatches") ? this.unknown() : new ApiError(503, "service_unavailable", "GitHub Actions could not be reached.", true); }
+    } catch {
+      throw dispatch
+        ? new GitHubDispatchError({ code: "network_error" })
+        : new ApiError(503, "service_unavailable", "GitHub Actions could not be reached.", true);
+    }
     if (!response.ok && !(allowConflict && response.status === 409)) {
-      throw method === "POST" && path.endsWith("/dispatches") ? this.unknown() : new ApiError(503, "service_unavailable", "GitHub Actions could not complete the request.", true);
+      if (dispatch) {
+        const requestId = response.headers.get("x-github-request-id");
+        throw new GitHubDispatchError({ code: "github_http_error", httpStatus: response.status, ...(requestId ? { requestId } : {}) });
+      }
+      throw new ApiError(503, "service_unavailable", "GitHub Actions could not complete the request.", true);
     }
     return response;
   }

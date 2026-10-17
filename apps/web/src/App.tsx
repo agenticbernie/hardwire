@@ -450,7 +450,13 @@ function App() {
         setRunSnapshot(null);
       }
       if (value.dispatch?.status === "pending_reconciliation") {
-        setActionError("Yêu cầu đã được lưu nhưng trạng thái workflow cần đồng bộ. Không tạo lần chạy mới.");
+        const diagnostic = value.dispatch.diagnostic && typeof value.dispatch.diagnostic === "object"
+          ? value.dispatch.diagnostic as RecordValue
+          : undefined;
+        const detail = diagnostic?.httpStatus
+          ? ` GitHub trả HTTP ${String(diagnostic.httpStatus)}${diagnostic.requestId ? ` (request ${String(diagnostic.requestId)}).` : "."}`
+          : diagnostic?.code ? ` Mã chẩn đoán: ${String(diagnostic.code)}.` : "";
+        setActionError(`Yêu cầu đã được lưu nhưng trạng thái workflow cần đồng bộ. Không tạo lần chạy mới.${detail}`);
       }
       await reloadProject();
     } catch (error) {
