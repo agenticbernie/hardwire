@@ -47,7 +47,7 @@ Source of truth: Hardwire PoC Product & Technical Specification v0.1 (2026-10-17
 | AC-17 Expiry denies access and deletes | Short TTL and separate 72-hour observation | Denial, deletion event and observed lag | **Short-TTL local logic pass only.** No Cloudflare deletion measurement or real 72-hour run. |
 | AC-18 Secrets absent from exports/evidence/logs | Secret-canary scan through real run/export | Zero canary matches | **Local controls tested; end-to-end not run.** Archive exclusions and redaction have unit coverage. |
 | AC-19 Report measured use and uncertainty | Inspect a product-run report before and after expiry cleanup | Model usage, cost attribution, Actions/Wokwi time, bytes, lifetime total, retained run details | **Partially implemented.** `/api/usage` shape and lifetime cleanup persistence are covered locally; OpenCode cost is not an invoice and an in-flight request can overshoot $10. No full product-run report yet. |
-| AC-20 Three independent cloud demonstrations | Complete the standard request three times without manual repair prompts | Three cloud run IDs and evidence sets | **Blocked.** No provisioned target repo/Worker/R2/Botkeep runtime or Wokwi token. |
+| AC-20 Three independent cloud demonstrations | Complete the standard request three times without manual repair prompts | Three cloud run IDs and evidence sets | **Blocked.** The target repository/workflow is published, but Cloudflare D1/R2/Worker and Botkeep are not deployed, and Wokwi secret configuration is unverified. |
 
 ## Evidence identity
 

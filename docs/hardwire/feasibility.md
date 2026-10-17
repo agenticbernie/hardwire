@@ -55,10 +55,19 @@ Sources: [Botkeep docs](https://botkeep.cloud/docs), [Cloudflare D1 Worker API](
 
 ## Open prerequisites
 
+## Deployment access recheck
+
+- Wrangler was not installed on `PATH`; an ephemeral Wrangler 4.151.1 invocation through `npx` was used. Its saved OAuth session is expired and cannot be refreshed. No `CLOUDFLARE_API_TOKEN` is present in the execution environment, so `whoami`, D1 listing, and R2 listing could not authenticate. No D1 database or R2 bucket was created and no Worker was deployed.
+- GitHub REST checks using the preconfigured `GITHUB_PAT` returned HTTP 403 with the message `Sorry. Your account was suspended` for both `/user` and the Hardwire repository. The token value was not printed. Repository Actions variables/secrets could not be configured through that token.
+- `OPENAI_API_KEY` is present in the execution environment, but was not written to GitHub. `WOKWI_CLI_TOKEN` is absent. GitHub Actions secret configuration remains unverified.
+- `apps/data-worker/wrangler.jsonc` now trusts `agenticbernie/hardwire` and the exact `main` workflow ref; the D1 database ID remains a provisioning placeholder. This config update is in commit `7fa62d3`.
+
 | Item | State | Needed to prove |
 |---|---|---|
+| Cloudflare authentication | Saved Wrangler OAuth session expired; no API token in the execution environment | Provision D1/R2, set Worker secret, apply migration and deploy |
+| GitHub Actions API credential | REST requests returned 403 suspension message; no repository variables/secrets changed | Set Worker URL/audience variables and runner secrets |
 | `WOKWI_CLI_TOKEN` | Absent in the local feasibility environment; repository secret state unverified | Authenticated scenarios, Serial output, TFT screenshots, simulator quota and duration |
-| Hardwire GitHub repository and workflow | Published on `main` at `3f783b7`; OIDC trust, secrets, and dispatch unverified | Live Actions dispatch/cancel and three independent cloud runs |
+| Hardwire GitHub repository and workflow | Published on `main`; OIDC repo/workflow trust configured in Worker source, but Actions secrets and dispatch unverified | Live Actions dispatch/cancel and three independent cloud runs |
 | Botkeep account/runtime assignment | Unverified | Deployment, host, port/domain and process supervision |
 | Cloudflare deploy identity and D1/R2 resources | Unverified | Live Worker deploy, data persistence and deletion behavior |
 | 72-hour elapsed retention run | Not started | Actual 72-hour operational deletion evidence |
