@@ -24,7 +24,8 @@ export class WorkerClient {
         headers: { authorization: `Bearer ${this.serviceToken}`, "x-founder-id": this.founderId, ...(body === undefined ? {} : { "content-type": mediaType }) },
         body: body === undefined ? undefined : mediaType === "application/json" ? JSON.stringify(body) : body as BodyInit,
         signal: AbortSignal.timeout(15_000),
-        redirect: "error",
+        // Workers supports `manual` but not `error`; non-2xx responses are rejected below.
+        redirect: "manual",
       });
     } catch { throw new ApiError(503, "service_unavailable", "The data service could not be reached.", true); }
     if (!response.ok) {

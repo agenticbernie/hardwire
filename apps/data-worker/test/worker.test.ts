@@ -6,7 +6,7 @@ import { cleanup } from '../src/index.ts';
 import { crc32,validateArchive,validatePng,writeZip } from '../src/archive.ts';
 import { sha256 } from '../src/types.ts';
 import { validateOidc } from '../src/auth.ts';
-import { SNAPSHOT_COMMIT } from '../src/snapshot.ts';
+import { fetchSnapshot,SNAPSHOT_COMMIT } from '../src/snapshot.ts';
 
 const encoder=new TextEncoder();
 function event(runId:string,sequence:number,type='heartbeat',payload:Record<string,unknown>={}) { return {eventId:`event-${sequence}`,runId,sequence,occurredAt:new Date().toISOString(),type,payload}; }
@@ -21,7 +21,7 @@ test('OIDC validates cryptographic signature, exact workflow/run claims, expirat
   const f=await setup();
   const keys=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:Uint8Array.of(1,0,1),hash:'SHA-256'},true,['sign','verify']);
   const kid=crypto.randomUUID(),jwk={...await crypto.subtle.exportKey('jwk',keys.publicKey),kid};
-  const fetcher=(async(input:RequestInfo|URL)=>{assert.equal(String(input),'https://token.actions.githubusercontent.com/.well-known/jwks');return Response.json({keys:[jwk]});}) as typeof fetch;
+  const fetcher=(async(input:RequestInfo|URL,init?:RequestInit)=>{assert.equal(String(input),'https://token.actions.githubusercontent.com/.well-known/jwks');assert.equal(init?.redirect,'manual');return Response.json({keys:[jwk]});}) as typeof fetch;
   t.mock.method(globalThis,'fetch',fetcher);
   const now=Math.floor(Date.now()/1000);
   const claims={iss:'https://token.actions.githubusercontent.com',aud:f.env.OIDC_AUDIENCE,exp:now+300,nbf:now-1,iat:now,jti:crypto.randomUUID(),repository:f.env.GITHUB_REPOSITORY,workflow_ref:f.env.GITHUB_WORKFLOW_REF,event_name:'workflow_dispatch',run_id:'1234',run_attempt:'1',sub:'repo:example/hardwire:ref:refs/heads/main'};
@@ -252,7 +252,7 @@ function snapshotTar():Uint8Array<ArrayBuffer> {
 
 test('pre-run export materializes only the fixed pinned public baseline and imports usable source',async(t)=>{
   const f=fixture();let fetches=0;
-  t.mock.method(globalThis,'fetch',async(url:RequestInfo|URL)=>{fetches++;assert.equal(String(url),`https://codeload.github.com/withbuildthings/buildthings-gunny-arcade/tar.gz/${SNAPSHOT_COMMIT}`);return new Response(snapshotTar());});
+  t.mock.method(globalThis,'fetch',async(url:RequestInfo|URL,init?:RequestInit)=>{fetches++;assert.equal(String(url),`https://codeload.github.com/withbuildthings/buildthings-gunny-arcade/tar.gz/${SNAPSHOT_COMMIT}`);assert.equal(init?.redirect,'manual');return new Response(snapshotTar());});
   const p=await(await f.request('/v1/projects','POST',{name:'Baseline',source:{kind:'gunny-snapshot',commit:SNAPSHOT_COMMIT}})).json() as any;
   const exported=await(await f.request('/v1/exports','POST',{projectId:p.project.id})).json() as any;
   assert.ok(exported.export,JSON.stringify(exported));assert.equal(fetches,1);
@@ -260,6 +260,15 @@ test('pre-run export materializes only the fixed pinned public baseline and impo
   const archive=await validateArchive(bytes);assert.equal(archive.files.size,3);assert.ok(archive.files.has('source/platformio.ini'));
   const imported=await f.request('/v1/imports','POST',bytes);assert.equal(imported.status,201);
   await f.request('/v1/exports','POST',{projectId:p.project.id});assert.equal(fetches,1);
+});
+
+test('pinned source snapshot refuses redirects in Workers fetch',async()=>{
+  let fetches=0;
+  await assert.rejects(fetchSnapshot(async(_url,init)=>{
+    fetches++;assert.equal(init?.redirect,'manual');
+    return new Response(null,{status:302,headers:{location:'https://untrusted.example/snapshot'}});
+  }),error=>(error as {code?:string}).code==='snapshot_unavailable');
+  assert.equal(fetches,1);
 });
 
 test('interrupted run resumes once with retained checkpoint, sequence, usage and dispatch history',async()=>{

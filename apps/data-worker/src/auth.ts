@@ -22,7 +22,7 @@ export async function validateOidc(token: string, env: Env, run: Row, fetcher: t
   requireCondition(header.alg === 'RS256' && typeof header.kid === 'string', 401, 'invalid_oidc_algorithm');
   // Never follow a token-provided jku/x5u or redirect to an arbitrary key source.
   if (!jwksCache || jwksCache.expires <= Date.now() || !jwksCache.keys.some(key => key.kid === header.kid)) {
-    const response = await fetcher(`${issuer}/.well-known/jwks`, { redirect: 'error' });
+    const response = await fetcher(`${issuer}/.well-known/jwks`, { redirect: 'manual' });
     requireCondition(response.ok, 503, 'oidc_keys_unavailable');
     const document = await response.json() as { keys: (JsonWebKey & { kid?: string })[] };
     requireCondition(Array.isArray(document.keys), 503, 'oidc_keys_unavailable');

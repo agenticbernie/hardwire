@@ -43,6 +43,7 @@ function boundary(options: { dispatch?: "ok" | "missing" | "timeout" | "failed";
     const body = typeof init.body === "string" ? JSON.parse(init.body) as JsonRecord : undefined;
     requests.push({ url, init, body });
     if (url.startsWith(config.workerUrl)) {
+      assert.equal(init.redirect, "manual");
       assert.equal(new Headers(init.headers).get("authorization"), `Bearer ${config.dataApiToken}`);
       assert.equal(new Headers(init.headers).get("x-founder-id"), "founder");
       if (path === `/v1/tasks/${taskId}`) return json({ task });
@@ -94,6 +95,7 @@ function boundary(options: { dispatch?: "ok" | "missing" | "timeout" | "failed";
       if (path === "/v1/imports") return json({ error: "unsafe archive" }, 422);
     }
     if (url.startsWith("https://api.github.com")) {
+      assert.equal(init.redirect, "manual");
       assert.equal(new Headers(init.headers).get("x-github-api-version"), "2026-03-10");
       assert.equal(new Headers(init.headers).get("authorization"), `Bearer ${config.githubToken}`);
       assert.notEqual(new Headers(init.headers).get("authorization"), `Bearer ${config.dataApiToken}`);

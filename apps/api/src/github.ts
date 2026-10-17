@@ -62,7 +62,8 @@ export class GitHubActions {
         method,
         headers: { accept: "application/vnd.github+json", authorization: `Bearer ${this.config.githubToken}`, "X-GitHub-Api-Version": "2026-03-10", "user-agent": "hardwire-poc-api", ...(body === undefined ? {} : { "content-type": "application/json" }) },
         body: body === undefined ? undefined : JSON.stringify(body),
-        redirect: "error",
+        // Do not follow redirects carrying the GitHub credential. Workers supports `manual`.
+        redirect: "manual",
         signal: AbortSignal.timeout(15_000),
       });
     } catch { throw method === "POST" && path.endsWith("/dispatches") ? this.unknown() : new ApiError(503, "service_unavailable", "GitHub Actions could not be reached.", true); }

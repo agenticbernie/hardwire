@@ -6,7 +6,7 @@ const prefix=`buildthings-gunny-arcade-${SNAPSHOT_COMMIT}/`;
 const decoder=new TextDecoder('utf-8',{fatal:true});
 
 export async function fetchSnapshot(fetcher:typeof fetch=fetch):Promise<Map<string,Uint8Array<ArrayBuffer>>> {
-  const response=await fetcher(`https://codeload.github.com/withbuildthings/buildthings-gunny-arcade/tar.gz/${SNAPSHOT_COMMIT}`,{redirect:'error',signal:AbortSignal.timeout(20000)});
+  const response=await fetcher(`https://codeload.github.com/withbuildthings/buildthings-gunny-arcade/tar.gz/${SNAPSHOT_COMMIT}`,{redirect:'manual',signal:AbortSignal.timeout(20000)});
   requireCondition(response.ok,503,'snapshot_unavailable');
   const packed=await boundedBytes(new Request('https://snapshot.invalid',{method:'POST',body:response.body,duplex:'half'} as RequestInit),16*1024*1024);
   const stream=new Blob([packed]).stream().pipeThrough(new DecompressionStream('gzip'));
